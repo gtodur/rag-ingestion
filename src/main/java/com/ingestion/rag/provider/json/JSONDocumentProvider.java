@@ -21,8 +21,6 @@ public class JSONDocumentProvider implements DocumentProvider {
     @Value("${amazon.s3.ingestion.bucket}")
     private String ingestionS3Bucket;
 
-    private final String JSON_DIR_LOC = ingestionS3Bucket + "/json";
-
     public JSONDocumentProvider(S3Client s3Client) {
         this.s3Client = s3Client;
     }
@@ -31,22 +29,24 @@ public class JSONDocumentProvider implements DocumentProvider {
     public List<Document> fetchUpdates() {
 
         // 1. List objects in the bucket
-        ListObjectsV2Response listResponse = s3Client.listObjectsV2(r -> r.bucket(JSON_DIR_LOC));
+        ListObjectsV2Response listResponse = s3Client.listObjectsV2(r -> r.bucket(ingestionS3Bucket));
 
         return listResponse.contents().stream()
+                .filter(s3Object -> s3Object.key().endsWith(".json"))
                 .map(s3Object -> {
                     // 2. Fetch the file content
                     ResponseInputStream<GetObjectResponse> inputStream = s3Client.getObject(r ->
-                            r.bucket(JSON_DIR_LOC).key(s3Object.key()));
+                            r.bucket(ingestionS3Bucket).key(s3Object.key()));
 
-                    JsonReader reader = new JsonReader(new InputStreamResource(inputStream), "typeCode", "contact", "localAuthorityShortCode", "startDate", "expiryDate");
+                    // JsonReader reader = new JsonReader(new InputStreamResource(inputStream), "typeCode", "contact", "localAuthorityShortCode", "startDate", "expiryDate");
+                    JsonReader reader = new JsonReader(new InputStreamResource(inputStream));
                     List<Document> docs = reader.get();
 
                     docs.forEach(doc -> {
                         doc.getMetadata().put("filename", s3Object.key());
                         doc.getMetadata().put("source", s3Object.key());
                         doc.getMetadata().put("last_modified", s3Object.lastModified().toString());
-                        doc.getMetadata().put("fullFilePath", "s3://" + JSON_DIR_LOC + "/" + s3Object.key());
+                        doc.getMetadata().put("fullFilePath", "s3://" + ingestionS3Bucket + "/" + s3Object.key());
                     });
 
                     return docs;

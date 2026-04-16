@@ -75,7 +75,7 @@ public class IngestionOrchestrator {
                         .build();
                 //TokenTextSplitter splitter = new TokenTextSplitter();
                 List<Document> chunkedDocs = splitter.apply(rawDocs);
-                ingestionService.ingest(rawDocs, chunkedDocs, "AWS_S3");
+                ingestionService.ingest(rawDocs, chunkedDocs, type);
                 //vectorStore.accept(chunkedDocs);
 
                 // Record the success in the database
